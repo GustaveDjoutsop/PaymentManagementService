@@ -1,0 +1,56 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: payment-management-service
+
+  datasource:
+    url: jdbc:h2:mem:paymentdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+payment:
+  currency: XAF
+  timeout-minutes: 5
+
+  pricing:
+    short-cycle: 1000
+    long-cycle: 2000
+
+  campay:
+    base-url: https://demo.campay.net
+    app-key: ${CAMPAY_APP_KEY:}
+    app-secret: ${CAMPAY_APP_SECRET:}
+    webhook-secret: ${CAMPAY_WEBHOOK_SECRET:}
+
+  mtn:
+    api-url: https://sandbox.momodeveloper.mtn.com
+    subscription-key: ${MTN_SUBSCRIPTION_KEY:}
+    api-user-id: ${MTN_API_USER_ID:}
+    api-key: ${MTN_API_KEY:}
+    environment: sandbox
+
+  orange:
+    api-url: https://api.orange.com
+    client-id: ${ORANGE_CLIENT_ID:}
+    client-secret: ${ORANGE_CLIENT_SECRET:}
+    merchant-key: ${ORANGE_MERCHANT_KEY:}
+
+machine-state-service:
+  base-url: http://localhost:8082
