@@ -1,0 +1,76 @@
+{
+  "mappings": [
+    {
+      "id": "campay-token",
+      "name": "CamPay - Get access token",
+      "request": {
+        "method": "POST",
+        "url": "/api/token/"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "token": "test-campay-token-abc123"
+        }
+      }
+    },
+    {
+      "id": "campay-collect-success",
+      "name": "CamPay - Initiate payment (success)",
+      "request": {
+        "method": "POST",
+        "url": "/api/collect/",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$.amount" },
+          { "matchesJsonPath": "$.from" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "reference": "CAMP-REF-001",
+          "status": "PENDING",
+          "operator": "MTN",
+          "code": "00",
+          "message": "Payment initiated"
+        }
+      }
+    },
+    {
+      "id": "campay-status-pending",
+      "name": "CamPay - Check payment status (PENDING)",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/transaction/CAMP-REF-.*/"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "reference": "CAMP-REF-001",
+          "status": "PENDING"
+        }
+      }
+    },
+    {
+      "id": "campay-status-successful",
+      "name": "CamPay - Check payment status (SUCCESSFUL)",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/transaction/CAMP-DONE-.*/"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "reference": "CAMP-DONE-001",
+          "status": "SUCCESSFUL",
+          "amount": "1500",
+          "operator": "MTN"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "mappings": [
+    {
+      "id": "mtn-token",
+      "name": "MTN MoMo - Get access token",
+      "request": {
+        "method": "POST",
+        "url": "/collection/token/"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "access_token": "test-mtn-bearer-token-xyz789",
+          "token_type": "access_token",
+          "expires_in": 3600
+        }
+      }
+    },
+    {
+      "id": "mtn-requesttopay",
+      "name": "MTN MoMo - Request to pay",
+      "request": {
+        "method": "POST",
+        "url": "/collection/v1_0/requesttopay",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$.amount" },
+          { "matchesJsonPath": "$.payer" }
+        ]
+      },
+      "response": {
+        "status": 202,
+        "headers": { "Content-Type": "application/json" }
+      }
+    },
+    {
+      "id": "mtn-status-pending",
+      "name": "MTN MoMo - Get payment status (PENDING)",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/collection/v1_0/requesttopay/.*"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "status": "PENDING",
+          "financialTransactionId": null
+        }
+      }
+    }
+  ]
+}
