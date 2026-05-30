@@ -131,9 +131,15 @@ jobs:
         run: mvn clean package -DskipTests -B
 
       - name: Start PaymentManagementService
+        env:
+          # Auth0 dev tenant — service validates incoming Bearer tokens
+          AUTH0_ISSUER_URI: https://dev-iuo6si32jobgnmod.eu.auth0.com/
+          AUTH0_AUDIENCE: https://smartlaundry.api
         run: |
           java -jar target/payment-management-service-*.jar \
             --server.port=8081 \
+            --spring.security.oauth2.resourceserver.jwt.issuer-uri=${AUTH0_ISSUER_URI} \
+            --auth0.audience=${AUTH0_AUDIENCE} \
             --payment.campay.base-url=http://localhost:9090 \
             --payment.campay.app-key=test-key \
             --payment.campay.app-secret=test-secret \
@@ -148,18 +154,27 @@ jobs:
             &
           echo "Waiting for PaymentManagementService to be ready..."
           for i in $(seq 1 30); do
-            curl -sf http://localhost:8081/api/rfid/cards && break
+            curl -sf http://localhost:8081/v3/api-docs > /dev/null 2>&1 && break
             sleep 3
           done
           echo "PaymentManagementService ready"
 
       - name: Run Robot Framework integration tests
+        env:
+          # Auth0 M2M credentials — robot tests request tokens before calling protected endpoints
+          # Use GitHub Secrets on staging/prod; dev defaults are in variables.robot
+          AUTH0_CLIENT_ID: ${{ secrets.AUTH0_DEV_CLIENT_ID || 'qrhBuc3lsJfRqsP8xKWAO334DOsseidM' }}
+          AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_DEV_CLIENT_SECRET || '5_L-EOe5BBn3g2V9egVHWnKJkabkxtqom4kIqxluEx8J0N6VEbFtG7XPdoCZln7G' }}
         run: |
           robot \
             --outputdir integration-tests/results \
             --log integration-tests/results/log.html \
             --report integration-tests/results/report.html \
             --xunit integration-tests/results/xunit.xml \
+            --variable AUTH0_CLIENT_ID:"${AUTH0_CLIENT_ID}" \
+            --variable AUTH0_CLIENT_SECRET:"${AUTH0_CLIENT_SECRET}" \
+            --variable AUTH0_TOKEN_URL:"https://dev-iuo6si32jobgnmod.eu.auth0.com/oauth/token" \
+            --variable AUTH0_AUDIENCE:"https://smartlaundry.api" \
             integration-tests/tests/suites/
         continue-on-error: false
 

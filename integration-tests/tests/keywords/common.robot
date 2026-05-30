@@ -1,18 +1,58 @@
 *** Settings ***
 Library     RequestsLibrary
 Library     JSONLibrary
+Library     Collections
 Resource    ../resources/variables.robot
 
 *** Keywords ***
+
+# ── Auth0 token acquisition ────────────────────────────────────────────────────
+
+Get Auth0 Bearer Token
+    [Documentation]
+    ...    Requests an M2M access token from Auth0 using client_credentials.
+    ...    Returns the raw access_token string.
+    ...    Credentials default to the dev tenant values in variables.robot;
+    ...    override AUTH0_CLIENT_ID / AUTH0_CLIENT_SECRET via --variable for other envs.
+    [Arguments]    ${scope}=${AUTH0_SCOPE}
+    Create Session    _auth0    https://dev-iuo6si32jobgnmod.eu.auth0.com    verify=True
+    &{body}=    Create Dictionary
+    ...    client_id=${AUTH0_CLIENT_ID}
+    ...    client_secret=${AUTH0_CLIENT_SECRET}
+    ...    audience=${AUTH0_AUDIENCE}
+    ...    grant_type=client_credentials
+    ...    scope=${scope}
+    ${resp}=    POST On Session    _auth0    /oauth/token
+    ...    json=${body}    expected_status=200
+    ${token}=    Set Variable    ${resp.json()}[access_token]
+    Delete Session    _auth0
+    RETURN    ${token}
+
+# ── Session management ─────────────────────────────────────────────────────────
+
 Create Session To Service
-    [Documentation]    Opens an HTTP session to the PaymentManagementService
+    [Documentation]
+    ...    Opens an authenticated HTTP session to the PaymentManagementService.
+    ...    Fetches a Bearer token from Auth0 and sets it as the default
+    ...    Authorization header so every subsequent request is authenticated.
+    ${token}=    Get Auth0 Bearer Token
+    &{headers}=    Create Dictionary
+    ...    Authorization=Bearer ${token}
+    ...    Content-Type=application/json
+    Create Session    payment    ${BASE_URL}    headers=${headers}    verify=False
+
+Create Public Session To Service
+    [Documentation]
+    ...    Opens an unauthenticated session used for webhook tests
+    ...    (webhooks are public — no Bearer token required).
     Create Session    payment    ${BASE_URL}    verify=False
 
 Delete Session To Service
     Delete All Sessions
 
+# ── RFID helpers ───────────────────────────────────────────────────────────────
+
 Register RFID Card
-    [Documentation]    Registers a new RFID card and returns the response body
     [Arguments]    ${card_uid}    ${owner_name}=${CARD_OWNER}    ${phone}=${CARD_PHONE}
     &{body}=    Create Dictionary
     ...    cardUid=${card_uid}
@@ -22,7 +62,6 @@ Register RFID Card
     RETURN    ${resp.json()}
 
 Get Card Balance
-    [Documentation]    Returns balance response for a card UID
     [Arguments]    ${card_uid}    ${required_amount}=${NONE}
     IF    $required_amount is not None
         ${resp}=    GET On Session    payment    /api/rfid/balance/${card_uid}
@@ -33,7 +72,6 @@ Get Card Balance
     RETURN    ${resp.json()}
 
 Debit Card
-    [Documentation]    Debits the specified amount from the card
     [Arguments]    ${card_uid}    ${amount}    ${machine_id}=${MACHINE_ID}
     ...            ${pulse_count}=${PULSE_COUNT}    ${cycle_duration}=${CYCLE_DURATION}
     &{body}=    Create Dictionary
@@ -47,7 +85,6 @@ Debit Card
     RETURN    ${resp.json()}
 
 Top Up Card With Cash
-    [Documentation]    Top-ups a card via CASH channel
     [Arguments]    ${card_uid}    ${amount}
     &{body}=    Create Dictionary
     ...    cardUid=${card_uid}
@@ -57,7 +94,6 @@ Top Up Card With Cash
     RETURN    ${resp.json()}
 
 Initiate Mobile Money Payment
-    [Documentation]    Initiates a payment via the given provider
     [Arguments]    ${phone}    ${amount}    ${provider}    ${machine_id}=${MACHINE_ID}
     &{body}=    Create Dictionary
     ...    phoneNumber=${phone}
@@ -71,7 +107,9 @@ Initiate Mobile Money Payment
     RETURN    ${resp.json()}
 
 Post Webhook
-    [Documentation]    Posts a payment provider webhook payload
+    [Documentation]    Posts a provider webhook using a separate public session (no token)
     [Arguments]    ${provider_path}    ${payload}
-    ${resp}=    POST On Session    payment    /api/webhook/${provider_path}    json=${payload}    expected_status=200
+    Create Session    _webhook    ${BASE_URL}    verify=False
+    ${resp}=    POST On Session    _webhook    /api/webhook/${provider_path}    json=${payload}    expected_status=200
+    Delete Session    _webhook
     RETURN    ${resp.json()}

@@ -43,10 +43,19 @@ spring:
     oauth2:
       resourceserver:
         jwt:
+          # Dev tenant — override via AUTH0_ISSUER_URI env var on staging/prod
           issuer-uri: https://dev-iuo6si32jobgnmod.eu.auth0.com/
 
 auth0:
   audience: https://smartlaundry.api
+
+# ── Auth0 M2M client (dev) ────────────────────────────────────────────────────
+# Used by Swagger UI "Authorize" button and integration-test token acquisition.
+# Override AUTH0_CLIENT_SECRET via env var on staging/prod — never commit prod secrets.
+auth0-client:
+  id: qrhBuc3lsJfRqsP8xKWAO334DOsseidM
+  secret: ${AUTH0_CLIENT_SECRET:5_L-EOe5BBn3g2V9egVHWnKJkabkxtqom4kIqxluEx8J0N6VEbFtG7XPdoCZln7G}
+  token-url: https://dev-iuo6si32jobgnmod.eu.auth0.com/oauth/token
 
 # ── Payment providers: sandbox URLs ──────────────────────────────────────────
 payment:
@@ -83,7 +92,8 @@ springdoc:
   swagger-ui:
     enabled: true
     oauth:
-      client-id: ${SWAGGER_CLIENT_ID:qhBuc3}
+      # Dev M2M client — pre-filled so "Authorize" in Swagger UI works out of the box
+      client-id: qrhBuc3lsJfRqsP8xKWAO334DOsseidM
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging:
