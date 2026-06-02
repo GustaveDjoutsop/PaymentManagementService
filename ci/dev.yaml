@@ -57,6 +57,17 @@ auth0-client:
   secret: ${AUTH0_CLIENT_SECRET:5_L-EOe5BBn3g2V9egVHWnKJkabkxtqom4kIqxluEx8J0N6VEbFtG7XPdoCZln7G}
   token-url: https://dev-iuo6si32jobgnmod.eu.auth0.com/oauth/token
 
+# ── EQLink integration (dev) ─────────────────────────────────────────────────
+# Set EQLINK_ENABLED=true + EQLINK_API_KEY to activate EQLink payment source.
+# Set EQLINK_AUTO_START=true to auto-trigger machine start after any payment.
+# Contact EQLink (+86 186 5325 0609 / eqlink.top) for your API key.
+eqlink:
+  enabled: ${EQLINK_ENABLED:false}
+  base-url: ${EQLINK_BASE_URL:https://api.eqlink.top}
+  api-key: ${EQLINK_API_KEY:}
+  webhook-secret: ${EQLINK_WEBHOOK_SECRET:}
+  auto-start-machine-after-payment: ${EQLINK_AUTO_START:false}
+
 # ── Payment providers: sandbox URLs ──────────────────────────────────────────
 payment:
   currency: XAF
