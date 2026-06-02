@@ -5,54 +5,29 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * Configuration for EQLink cloud integration in the PaymentManagementService.
+ * EQLink-related properties for the PaymentManagementService.
  *
- * <p>When {@code eqlink.enabled=true} the service:
- * <ul>
- *   <li>Accepts EQLink payment webhooks on {@code POST /api/webhook/eqlink} and
- *       records them as {@code EQLINK} provider transactions.</li>
- *   <li>After a successful CamPay/MTN/Orange payment, automatically triggers the
- *       machine start via MachineStateService (which in turn calls EQLink if configured
- *       there).</li>
- * </ul>
+ * <h2>Important: EQLink is NOT a payment system</h2>
+ * EQLink is a machine CONTROL platform. Payments are handled by CamPay, MTN MoMo,
+ * and Orange Money only. This class controls whether the service automatically
+ * triggers a machine start via MachineStateService after a successful payment.
  *
- * <p>Example {@code ci/dev.yaml}:
- * <pre>{@code
- * eqlink:
- *   enabled: true
- *   webhook-secret: YOUR_EQLINK_WEBHOOK_SECRET
- *   auto-start-machine-after-payment: true
- * }</pre>
+ * <h2>Auto machine start</h2>
+ * When {@code eqlink.auto-start-machine-after-payment=true}, the
+ * {@link com.smartlaundromat.payment.service.machine.MachineStartService} is called
+ * after any SUCCESSFUL payment to trigger MachineStateService to start the machine.
+ * MachineStateService then decides whether to use EQLink IoT or MQTT for the actual
+ * command dispatch.
  */
 @Data
 @Component
 @ConfigurationProperties(prefix = "eqlink")
 public class EqLinkProperties {
 
-    /** Master switch — enables EQLink webhook processing and auto-start. */
-    private boolean enabled = false;
-
-    /** EQLink REST API base URL. */
-    private String baseUrl = "https://api.eqlink.top";
-
     /**
-     * API key for calling EQLink's REST API.
-     * Only needed if PaymentManagementService calls EQLink directly.
-     */
-    private String apiKey;
-
-    /**
-     * HMAC secret for verifying EQLink webhook signatures.
-     * Must match the value configured in the EQLink dashboard.
-     */
-    private String webhookSecret;
-
-    /**
-     * When {@code true}, PaymentManagementService automatically POSTs to
-     * MachineStateService ({@code /api/machines/start-cycle}) after any
-     * payment (CamPay, MTN, Orange, or EQLink) is confirmed as SUCCESSFUL.
-     *
-     * <p>Requires {@code machine-state-service.base-url} to be configured.
+     * When {@code true}, the service automatically notifies MachineStateService
+     * to start the machine after any payment is confirmed as SUCCESSFUL.
+     * Default: {@code false}.
      */
     private boolean autoStartMachineAfterPayment = false;
 }

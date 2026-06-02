@@ -55,16 +55,12 @@ payment:
 machine-state-service:
   base-url: http://localhost:8082
 
-# ── EQLink integration ────────────────────────────────────────────────────────
-# enabled: true  → accept EQLink payment webhooks + auto-trigger machine start
-# enabled: false → EQLink webhooks are ignored; CamPay/MTN/Orange only
+# ── Post-payment machine trigger ──────────────────────────────────────────────
+# EQLink is NOT a payment system — it is a machine CONTROL platform.
+# This flag controls whether PaymentManagementService automatically calls
+# MachineStateService to start the machine after any CamPay/MTN/Orange payment.
+# MachineStateService then uses EQLink IoT (if configured) or MQTT.
 eqlink:
-  enabled: ${EQLINK_ENABLED:false}
-  base-url: ${EQLINK_BASE_URL:https://api.eqlink.top}
-  api-key: ${EQLINK_API_KEY:}
-  webhook-secret: ${EQLINK_WEBHOOK_SECRET:}
-  # When true: after any successful payment, PaymentManagementService calls
-  # MachineStateService /api/machines/start-cycle automatically.
   auto-start-machine-after-payment: ${EQLINK_AUTO_START:false}
 
 # ── Security: Auth0 Resource Server ──────────────────────────────────────────

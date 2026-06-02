@@ -9,7 +9,6 @@ import com.smartlaundromat.payment.model.enums.PaymentStatus;
 import com.smartlaundromat.payment.repository.TransactionRepository;
 import com.smartlaundromat.payment.service.machine.MachineStartService;
 import com.smartlaundromat.payment.service.provider.CampayService;
-import com.smartlaundromat.payment.service.provider.EqLinkPaymentService;
 import com.smartlaundromat.payment.service.provider.MtnMomoService;
 import com.smartlaundromat.payment.service.provider.OrangeMoneyService;
 import com.smartlaundromat.payment.service.provider.PaymentProviderService;
@@ -29,14 +28,15 @@ public class PaymentService {
 
     private final TransactionRepository transactionRepository;
 
-    // ── Payment providers ─────────────────────────────────────────────────────
+    // ── Payment providers (mobile money only — EQLink is not a payment system) ─
     private final CampayService campayService;
     private final MtnMomoService mtnMomoService;
     private final OrangeMoneyService orangeMoneyService;
-    /** EQLink's own payment system — active when eqlink.enabled=true. */
-    private final EqLinkPaymentService eqLinkPaymentService;
 
-    /** Triggers MachineStateService after successful payment when auto-start is on. */
+    /**
+     * Triggers MachineStateService to start the machine after a SUCCESSFUL payment.
+     * Active only when {@code eqlink.auto-start-machine-after-payment=true}.
+     */
     private final MachineStartService machineStartService;
 
     // ── Payment initiation ────────────────────────────────────────────────────
@@ -88,11 +88,12 @@ public class PaymentService {
     // ── Webhook processing ────────────────────────────────────────────────────
 
     /**
-     * Processes a payment provider callback (CamPay, MTN, Orange, or EQLink).
+     * Processes a payment provider callback (CamPay, MTN, or Orange Money).
      *
-     * <p>After marking a transaction {@code SUCCESSFUL}, automatically triggers
+     * <p>After marking a transaction {@code SUCCESSFUL}, automatically notifies
      * MachineStateService to start the machine if
      * {@code eqlink.auto-start-machine-after-payment=true}.
+     * MachineStateService then decides whether to use EQLink IoT or MQTT.
      */
     @Transactional
     public Transaction processWebhook(PaymentProvider provider,
@@ -118,7 +119,7 @@ public class PaymentService {
             log.info("Payment SUCCESSFUL — tx={}, machine={}, provider={}",
                     externalReference, transaction.getMachineId(), provider);
 
-            // Auto-trigger machine start via MachineStateService
+            // Auto-trigger machine start via MachineStateService (which uses EQLink or MQTT)
             machineStartService.notifyMachineStart(transaction);
 
         } else {
@@ -150,8 +151,7 @@ public class PaymentService {
         return Map.of(
                 "campay",       Map.of("configured", campayService.isConfigured()),
                 "mtn",          Map.of("configured", mtnMomoService.isConfigured()),
-                "orange_money", Map.of("configured", orangeMoneyService.isConfigured()),
-                "eqlink",       Map.of("configured", eqLinkPaymentService.isConfigured())
+                "orange_money", Map.of("configured", orangeMoneyService.isConfigured())
         );
     }
 
@@ -162,7 +162,6 @@ public class PaymentService {
             case CAMPAY       -> campayService;
             case MTN          -> mtnMomoService;
             case ORANGE_MONEY -> orangeMoneyService;
-            case EQLINK       -> eqLinkPaymentService;
         };
     }
 }

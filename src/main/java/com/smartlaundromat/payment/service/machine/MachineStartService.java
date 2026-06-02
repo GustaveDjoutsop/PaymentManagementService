@@ -46,7 +46,7 @@ public class MachineStartService {
      * @param transaction the successfully paid transaction
      */
     public void notifyMachineStart(Transaction transaction) {
-        if (!eqLinkProperties.isAutoStartMachineAfterPayment()) {
+        if (eqLinkProperties == null || !eqLinkProperties.isAutoStartMachineAfterPayment()) {
             log.debug("Auto machine start disabled — skipping for tx {}", transaction.getExternalReference());
             return;
         }
