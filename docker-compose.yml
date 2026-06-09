@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: payment_user
       POSTGRES_PASSWORD: payment_pass
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,36 +16,36 @@ services:
       timeout: 5s
       retries: 5
 
-  # app:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: payment-management-service
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   ports:
-  #     - "8081:8081"
-  #   environment:
-  #     DB_HOST: db
-  #     DB_PORT: 5432
-  #     DB_NAME: paymentdb
-  #     DB_USER: payment_user
-  #     DB_PASSWORD: payment_pass
-  #     AUTH0_ISSUER_URI: ${AUTH0_ISSUER_URI:-https://dev-iuo6si32jobgnmod.eu.auth0.com/}
-  #     AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://smartlaundry.api}
-  #     CAMPAY_APP_KEY: ${CAMPAY_APP_KEY:-}
-  #     CAMPAY_APP_SECRET: ${CAMPAY_APP_SECRET:-}
-  #     CAMPAY_WEBHOOK_SECRET: ${CAMPAY_WEBHOOK_SECRET:-}
-  #     MTN_SUBSCRIPTION_KEY: ${MTN_SUBSCRIPTION_KEY:-}
-  #     MTN_API_USER_ID: ${MTN_API_USER_ID:-}
-  #     MTN_API_KEY: ${MTN_API_KEY:-}
-  #     ORANGE_CLIENT_ID: ${ORANGE_CLIENT_ID:-}
-  #     ORANGE_CLIENT_SECRET: ${ORANGE_CLIENT_SECRET:-}
-  #     ORANGE_MERCHANT_KEY: ${ORANGE_MERCHANT_KEY:-}
-  #     EQLINK_AUTO_START: ${EQLINK_AUTO_START:-false}
-  #     CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
-  #   restart: on-failure
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-management-service
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: paymentdb
+      DB_USER: payment_user
+      DB_PASSWORD: payment_pass
+      AUTH0_ISSUER_URI: ${AUTH0_ISSUER_URI:-https://dev-iuo6si32jobgnmod.eu.auth0.com/}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://smartlaundry.api}
+      CAMPAY_APP_KEY: ${CAMPAY_APP_KEY:-}
+      CAMPAY_APP_SECRET: ${CAMPAY_APP_SECRET:-}
+      CAMPAY_WEBHOOK_SECRET: ${CAMPAY_WEBHOOK_SECRET:-}
+      MTN_SUBSCRIPTION_KEY: ${MTN_SUBSCRIPTION_KEY:-}
+      MTN_API_USER_ID: ${MTN_API_USER_ID:-}
+      MTN_API_KEY: ${MTN_API_KEY:-}
+      ORANGE_CLIENT_ID: ${ORANGE_CLIENT_ID:-}
+      ORANGE_CLIENT_SECRET: ${ORANGE_CLIENT_SECRET:-}
+      ORANGE_MERCHANT_KEY: ${ORANGE_MERCHANT_KEY:-}
+      EQLINK_AUTO_START: ${EQLINK_AUTO_START:-false}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+    restart: on-failure
 
 volumes:
   postgres_data:
