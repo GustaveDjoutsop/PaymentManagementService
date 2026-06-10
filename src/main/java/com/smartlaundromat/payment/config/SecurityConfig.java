@@ -47,7 +47,7 @@ import java.util.List;
  *   <li>GET  /actuator/health</li>
  * </ul>
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {

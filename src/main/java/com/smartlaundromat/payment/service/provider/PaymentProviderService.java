@@ -3,11 +3,11 @@ package com.smartlaundromat.payment.service.provider;
 import com.smartlaundromat.payment.dto.PaymentResponse;
 import java.math.BigDecimal;
 
-public interface PaymentProviderService {
+public abstract class PaymentProviderService {
 
-    PaymentResponse requestPayment(String phoneNumber, BigDecimal amount, String description, String externalReference);
+    public abstract PaymentResponse requestPayment(String phoneNumber, BigDecimal amount, String description, String externalReference);
 
-    String getProviderName();
+    public abstract String getProviderName();
 
-    boolean isConfigured();
+    public abstract boolean isConfigured();
 }

@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @SecurityScheme(
     name = "auth0",
     type = SecuritySchemeType.OAUTH2,
