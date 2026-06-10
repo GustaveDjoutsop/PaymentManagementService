@@ -38,7 +38,7 @@ public class WebhookController {
             @RequestHeader(value = "X-Campay-Signature", required = false) String signature,
             @RequestBody WebhookPayload payload) {
 
-        log.info("CamPay webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
+        log.info("CamPay webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus()); //
 
         paymentService.processWebhook(
                 PaymentProvider.CAMPAY,

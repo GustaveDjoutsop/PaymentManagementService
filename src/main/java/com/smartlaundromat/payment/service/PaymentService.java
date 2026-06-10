@@ -43,15 +43,19 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse initiatePayment(PaymentInitiationRequest request) {
+        log.info("Initiating payment: machine={}, amount={}, provider={}",
+                request.getMachineId(), request.getAmount(), request.getProvider());
         List<Transaction> activeCycles = transactionRepository
                 .findByMachineIdAndStatus(request.getMachineId(), PaymentStatus.SUCCESSFUL);
         if (!activeCycles.isEmpty()) {
+            log.warn("Machine {} has an active cycle, rejecting new payment request", request.getMachineId());
             throw new PaymentException("MACHINE_BUSY",
                     "Machine " + request.getMachineId() + " has an active cycle");
         }
         List<Transaction> pendingPayments = transactionRepository
                 .findByMachineIdAndStatus(request.getMachineId(), PaymentStatus.PENDING);
         if (!pendingPayments.isEmpty()) {
+            log.warn("Machine {} has a pending payment, rejecting new payment request", request.getMachineId());
             throw new PaymentException("PENDING_PAYMENT",
                     "Machine " + request.getMachineId() + " has a pending payment");
         }
@@ -68,9 +72,13 @@ public class PaymentService {
                 .description(request.getDescription())
                 .paymentProvider(request.getProvider())
                 .build();
+
+        log.info("save new transaction with external reference: {}", externalReference);
         transactionRepository.save(transaction);
 
         PaymentProviderService provider = resolveProvider(request.getProvider());
+        log.info("Requesting payment from provider {}: externalReference={}, phoneNumber={}, amount={}",
+                request.getProvider(), externalReference, request.getPhoneNumber(), request.getAmount());
 
         PaymentResponse response = provider.requestPayment(
                 request.getPhoneNumber(),
@@ -79,9 +87,11 @@ public class PaymentService {
                 externalReference
         );
 
+        log.info("Payment response received: {}", response);
         transaction.setProviderReference(response.getProviderReference());
         transactionRepository.save(transaction);
 
+        log.info("transaction updated with provider reference: {}", transaction);
         return response;
     }
 

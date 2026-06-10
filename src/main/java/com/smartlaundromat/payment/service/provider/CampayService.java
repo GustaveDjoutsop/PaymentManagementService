@@ -25,15 +25,20 @@ public class CampayService extends PaymentProviderService {
     @Override
     public PaymentResponse requestPayment(String phoneNumber, BigDecimal amount, String description, String externalReference) {
         PaymentConfig.CampayConfig config = paymentConfig.getCampay();
+        log.info("Initiating CamPay payment: phoneNumber={}, amount={}, description={}, externalReference={}",
+                phoneNumber, amount, description, externalReference);
 
         if (!isConfigured()) {
+            log.error("CamPay payment provider is not configured");
             throw new PaymentException("CAMPAY_NOT_CONFIGURED", "CamPay payment provider is not configured");
         }
 
         String formattedPhone = formatPhoneNumber(phoneNumber);
 
         try {
+            log.info("Authenticating with CamPay to get access token");
             String token = getAccessToken(config);
+            log.info("Access token obtained successfully");
 
             WebClient client = webClientBuilder.baseUrl(config.getBaseUrl()).build();
 
@@ -46,7 +51,7 @@ public class CampayService extends PaymentProviderService {
             );
 
             Map<?, ?> response = client.post()
-                    .uri("/api/collect/")
+                    .uri("/collect/")
                     .header("Authorization", "Token " + token)
                     .header("Content-Type", "application/json")
                     .bodyValue(requestBody)
@@ -83,7 +88,13 @@ public class CampayService extends PaymentProviderService {
 
     @Override
     public boolean isConfigured() {
+
         PaymentConfig.CampayConfig config = paymentConfig.getCampay();
+        log.debug("Checking CamPay configuration: baseUrl={}, appKeySet={}, appSecretSet={}",
+                config.getBaseUrl(),
+                StringUtils.hasText(config.getAppKey()),
+                StringUtils.hasText(config.getAppSecret()));
+
         return StringUtils.hasText(config.getAppKey())
                 && StringUtils.hasText(config.getAppSecret());
     }
@@ -92,11 +103,11 @@ public class CampayService extends PaymentProviderService {
         WebClient client = webClientBuilder.baseUrl(config.getBaseUrl()).build();
 
         Map<?, ?> tokenResponse = client.post()
-                .uri("/api/token/")
+                .uri("/token/")
                 .header("Content-Type", "application/json")
                 .bodyValue(Map.of(
-                        "username", config.getAppKey(),
-                        "password", config.getAppSecret()
+                        "username", config.getAppKey(),// CamPay uses "username" for the app key
+                        "password", config.getAppSecret()// CamPay uses "password" for the app secret
                 ))
                 .retrieve()
                 .bodyToMono(Map.class)
