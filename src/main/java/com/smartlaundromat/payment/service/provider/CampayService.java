@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -43,7 +44,7 @@ public class CampayService extends PaymentProviderService {
             WebClient client = webClientBuilder.baseUrl(config.getBaseUrl()).build();
 
             Map<String, String> requestBody = Map.of(
-                    "amount", amount.toPlainString(),
+                    "amount", amount.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString(),
                     "currency", paymentConfig.getCurrency(),
                     "from", formattedPhone,
                     "description", description != null ? description : "Smart Laundry Payment",
@@ -75,6 +76,10 @@ public class CampayService extends PaymentProviderService {
 
         } catch (PaymentException e) {
             throw e;
+        } catch (WebClientResponseException e) {
+            String body = e.getResponseBodyAsString();
+            log.error("CamPay payment failed: {} - {}", e.getMessage(), body);
+            throw new PaymentException("CAMPAY_ERROR", mapCampayError(body));
         } catch (Exception e) {
             log.error("CamPay payment failed: {}", e.getMessage(), e);
             throw new PaymentException("CAMPAY_ERROR", mapCampayError(e.getMessage()));
