@@ -8,6 +8,7 @@ import com.smartlaundromat.payment.model.enums.PaymentStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
@@ -16,7 +17,7 @@ import java.util.Map;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class CampayService implements PaymentProviderService {
+public class CampayService extends PaymentProviderService {
 
     private final PaymentConfig paymentConfig;
     private final WebClient.Builder webClientBuilder;
@@ -83,8 +84,8 @@ public class CampayService implements PaymentProviderService {
     @Override
     public boolean isConfigured() {
         PaymentConfig.CampayConfig config = paymentConfig.getCampay();
-        return config.getAppKey() != null && !config.getAppKey().isBlank()
-                && config.getAppSecret() != null && !config.getAppSecret().isBlank();
+        return StringUtils.hasText(config.getAppKey())
+                && StringUtils.hasText(config.getAppSecret());
     }
 
     private String getAccessToken(PaymentConfig.CampayConfig config) {

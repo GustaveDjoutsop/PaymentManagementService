@@ -8,6 +8,7 @@ import com.smartlaundromat.payment.model.enums.PaymentStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
@@ -19,7 +20,7 @@ import java.util.Map;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class OrangeMoneyService implements PaymentProviderService {
+public class OrangeMoneyService extends PaymentProviderService {
 
     private final PaymentConfig paymentConfig;
     private final WebClient.Builder webClientBuilder;
@@ -91,9 +92,9 @@ public class OrangeMoneyService implements PaymentProviderService {
     @Override
     public boolean isConfigured() {
         PaymentConfig.OrangeConfig config = paymentConfig.getOrange();
-        return config.getClientId() != null && !config.getClientId().isBlank()
-                && config.getClientSecret() != null && !config.getClientSecret().isBlank()
-                && config.getMerchantKey() != null && !config.getMerchantKey().isBlank();
+        return StringUtils.hasText(config.getClientId())
+                && StringUtils.hasText(config.getClientSecret())
+                && StringUtils.hasText(config.getMerchantKey());
     }
 
     private synchronized String getAccessToken(PaymentConfig.OrangeConfig config) {

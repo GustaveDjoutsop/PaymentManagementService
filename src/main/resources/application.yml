@@ -6,7 +6,7 @@ spring:
     name: payment-management-service
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/paymentdb}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/paymentdb}
     driver-class-name: org.postgresql.Driver
     username: ${POSTGRES_USER:payment_user}
     password: ${POSTGRES_PASSWORD:payment_pass}

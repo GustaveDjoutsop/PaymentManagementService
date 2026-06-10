@@ -19,6 +19,11 @@
 
     <properties>
         <java.version>25</java.version>
+        <!-- Explicitly clear the release property to override Spring Boot's default -->
+        <maven.compiler.release></maven.compiler.release>
+        <!-- Set source and target instead -->
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
         <lombok.version>1.18.46</lombok.version>
     </properties>
 
@@ -95,8 +100,16 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.1</version>
                 <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                     <proc>full</proc>
+                    
+                    <!-- Force Maven to use the exact Java 25 compiler -->
+                    <fork>true</fork>
+                    <executable>C:\Program Files\Java\jdk-25.0.3\bin\javac.exe</executable>
+                    
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -106,7 +119,6 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
