@@ -2,8 +2,8 @@ package com.smartlaundromat.payment.service.machine;
 
 import com.smartlaundromat.payment.eqlink.EqLinkProperties;
 import com.smartlaundromat.payment.model.Transaction;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -24,10 +24,14 @@ import java.util.Map;
  *
  * <p>MachineStateService then decides internally whether to use EQLink or MQTT
  * to physically start the machine — PaymentManagementService does not need to know.
+ *
+ * <p>The call is authenticated with an Auth0 M2M Bearer token via the
+ * {@code machineStateRestTemplate} bean (see {@code MicroserviceClientConfig}),
+ * since MachineStateService requires {@code SCOPE_sls-machine-start} on
+ * {@code POST /api/machines/start-cycle}.
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class MachineStartService {
 
     private final EqLinkProperties eqLinkProperties;
@@ -35,6 +39,12 @@ public class MachineStartService {
 
     @Value("${machine-state-service.base-url:http://localhost:8082}")
     private String machineStateServiceUrl;
+
+    public MachineStartService(EqLinkProperties eqLinkProperties,
+                                @Qualifier("machineStateRestTemplate") RestTemplate restTemplate) {
+        this.eqLinkProperties = eqLinkProperties;
+        this.restTemplate = restTemplate;
+    }
 
     /**
      * Asynchronously notifies MachineStateService to start the machine cycle

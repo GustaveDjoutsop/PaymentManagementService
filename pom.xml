@@ -69,6 +69,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
 
         <!-- API Documentation — SpringDoc OpenAPI / Swagger UI -->
         <dependency>
@@ -105,11 +109,7 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <proc>full</proc>
-                    
-                    <!-- Force Maven to use the exact Java 25 compiler -->
-                    <fork>true</fork>
-                    <executable>C:\Program Files\Java\jdk-25.0.3\bin\javac.exe</executable>
-                    
+
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

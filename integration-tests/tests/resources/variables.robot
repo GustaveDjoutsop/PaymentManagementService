@@ -4,11 +4,12 @@ ${WIREMOCK_URL}         http://localhost:9090
 ${CONTENT_TYPE}         application/json
 
 # ── Auth0 credentials (dev tenant) ───────────────────────────────────────────
-# These are the DEV defaults. Override via --variable on staging/prod CI runs.
-# Do NOT use these credentials on staging or production environments.
+# No credentials here — CI always passes AUTH0_CLIENT_ID/AUTH0_CLIENT_SECRET via
+# --variable (see .github/workflows/pull-request.yml). To run locally, pass your
+# own dev M2M credentials the same way: --variable AUTH0_CLIENT_ID:... etc.
 ${AUTH0_TOKEN_URL}      https://dev-iuo6si32jobgnmod.eu.auth0.com/oauth/token
-${AUTH0_CLIENT_ID}      qrhBuc3lsJfRqsP8xKWAO334DOsseidM
-${AUTH0_CLIENT_SECRET}  5_L-EOe5BBn3g2V9egVHWnKJkabkxtqom4kIqxluEx8J0N6VEbFtG7XPdoCZln7G
+${AUTH0_CLIENT_ID}      ${EMPTY}
+${AUTH0_CLIENT_SECRET}  ${EMPTY}
 ${AUTH0_AUDIENCE}       https://smartlaundry.api
 # All scopes needed by this service's integration tests
 ${AUTH0_SCOPE}          sls-rfid-read sls-rfid-manage sls-rfid-debit sls-payment-read sls-payment-initiate sls-topup-manage
