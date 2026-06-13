@@ -38,18 +38,9 @@ payment:
 
   campay:
     base-url: ${CAMPAY_BASE_URL:https://demo.campay.net/api}     # https://www.campay.net/api
-    app-key: ${CAMPAY_APP_KEY:BrX4pd8v5FBJBBr7tiJd8i07xfenTx3OKYOykGYle33pjF-xOtg_au-PIUMfWLSVQpMO2JRpaG6Zk_dk4yiv1g} # campay app username
-    app-secret: ${CAMPAY_APP_SECRET:c6t1JndkoGwbdcIIF_OrA9EJEOHrLr6twjaJA8YgCYrLu13-jaxRp0mSI0wsmEBltPkHvbuepMD6vlZ3_CPbSw} # campay app password
-    webhook-secret: ${CAMPAY_WEBHOOK_SECRET:b_z4Cpmzk-3UTCuCA6y5w6Dis1ypviZQCpdTw02IVbS9tdsvY6ncpWMyLk8hDSIRtkbGBfRt9GONd48MSj9QWQ}
-
-# campay:
-#   token: 69edf42a450ffda96e2f5cf296f1874dc2ef247f
-#   base-url: https://demo.campay.net/api
-#   auth-scheme: Token
-#   collect-path: /collect/
-#   status-path: /transaction/
-#   webhook-secret: b_z4Cpmzk-3UTCuCA6y5w6Dis1ypviZQCpdTw02IVbS9tdsvY6ncpWMyLk8hDSIRtkbGBfRt9GONd48MSj9QWQ
-#   webhook-signature-header: x-campay-signature
+    app-key: ${CAMPAY_APP_KEY:} # campay app username
+    app-secret: ${CAMPAY_APP_SECRET:} # campay app password
+    webhook-secret: ${CAMPAY_WEBHOOK_SECRET:}
 
   mtn:
     api-url: https://sandbox.momodeveloper.mtn.com
