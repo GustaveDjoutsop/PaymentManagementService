@@ -1,5 +1,7 @@
 package com.smartlaundromat.payment.service.provider;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartlaundromat.payment.config.PaymentConfig;
 import com.smartlaundromat.payment.dto.PaymentResponse;
 import com.smartlaundromat.payment.exception.PaymentException;
@@ -22,6 +24,7 @@ public class CampayService extends PaymentProviderService {
 
     private final PaymentConfig paymentConfig;
     private final WebClient.Builder webClientBuilder;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public PaymentResponse requestPayment(String phoneNumber, BigDecimal amount, String description, String externalReference) {
@@ -79,7 +82,7 @@ public class CampayService extends PaymentProviderService {
         } catch (WebClientResponseException e) {
             String body = e.getResponseBodyAsString();
             log.error("CamPay payment failed: {} - {}", e.getMessage(), body);
-            throw new PaymentException("CAMPAY_ERROR", mapCampayError(body));
+            throw new PaymentException(buildErrorCode(body), mapCampayError(body));
         } catch (Exception e) {
             log.error("CamPay payment failed: {}", e.getMessage(), e);
             throw new PaymentException("CAMPAY_ERROR", mapCampayError(e.getMessage()));
@@ -142,6 +145,29 @@ public class CampayService extends PaymentProviderService {
         }
 
         return cleaned;
+    }
+
+    /**
+     * Builds a PaymentException error code that preserves CamPay's original error_code
+     * (e.g. "CAMPAY_ER102") so downstream consumers can localize the message themselves.
+     * Falls back to "CAMPAY_ERROR" when the response body has no recognizable error_code.
+     */
+    private String buildErrorCode(String body) {
+        String campayErrorCode = extractCampayErrorCode(body);
+        return campayErrorCode != null ? "CAMPAY_" + campayErrorCode : "CAMPAY_ERROR";
+    }
+
+    private String extractCampayErrorCode(String body) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(body);
+            JsonNode errorCode = node.get("error_code");
+            return errorCode != null ? errorCode.asText() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String mapCampayError(String errorMessage) {
