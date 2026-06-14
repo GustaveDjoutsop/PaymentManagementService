@@ -107,9 +107,23 @@ Initiate Mobile Money Payment
     RETURN    ${resp.json()}
 
 Post Webhook
-    [Documentation]    Posts a provider webhook using a separate public session (no token)
+    [Documentation]    Posts a provider webhook using a separate public session (no token).
+    ...    CamPay webhooks must carry a valid X-Campay-Signature (HMAC-SHA256 of the
+    ...    raw body using CAMPAY_WEBHOOK_SECRET) — PaymentManagementService rejects
+    ...    unsigned/invalid CamPay webhooks with 401, and rejects all CamPay webhooks
+    ...    with 503 if CAMPAY_WEBHOOK_SECRET isn't configured on the service.
     [Arguments]    ${provider_path}    ${payload}
     Create Session    _webhook    ${BASE_URL}    verify=False
-    ${resp}=    POST On Session    _webhook    /api/webhook/${provider_path}    json=${payload}    expected_status=200
+    IF    '${provider_path}' == 'campay'
+        ${body}=    Evaluate    json.dumps($payload)    modules=json
+        ${signature}=    Evaluate
+        ...    hmac.new($CAMPAY_WEBHOOK_SECRET.encode(), $body.encode(), hashlib.sha256).hexdigest()
+        ...    modules=hmac,hashlib
+        &{headers}=    Create Dictionary    Content-Type=application/json    X-Campay-Signature=${signature}
+        ${resp}=    POST On Session    _webhook    /api/webhook/${provider_path}
+        ...    data=${body}    headers=${headers}    expected_status=200
+    ELSE
+        ${resp}=    POST On Session    _webhook    /api/webhook/${provider_path}    json=${payload}    expected_status=200
+    END
     Delete Session    _webhook
     RETURN    ${resp.json()}

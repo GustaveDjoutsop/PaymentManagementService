@@ -4,6 +4,8 @@ import com.smartlaundromat.payment.eqlink.EqLinkProperties;
 import com.smartlaundromat.payment.model.Transaction;
 import com.smartlaundromat.payment.model.enums.PaymentProvider;
 import com.smartlaundromat.payment.model.enums.PaymentStatus;
+import io.github.resilience4j.bulkhead.BulkheadRegistry;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +40,8 @@ class MachineStartServiceTest {
 
     @BeforeEach
     void setUp() {
-        machineStartService = new MachineStartService(eqLinkProperties, restTemplate);
+        machineStartService = new MachineStartService(eqLinkProperties, restTemplate,
+                CircuitBreakerRegistry.ofDefaults(), BulkheadRegistry.ofDefaults());
         ReflectionTestUtils.setField(machineStartService, "machineStateServiceUrl", "http://localhost:8082");
 
         transaction = Transaction.builder()

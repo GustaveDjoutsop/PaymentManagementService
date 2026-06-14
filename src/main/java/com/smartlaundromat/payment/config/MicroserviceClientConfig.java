@@ -1,6 +1,7 @@
 package com.smartlaundromat.payment.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
@@ -45,6 +46,16 @@ public class MicroserviceClientConfig {
 
     private static final Authentication SYSTEM_PRINCIPAL = new AnonymousAuthenticationToken(
             "system", "system", List.of(new SimpleGrantedAuthority("ROLE_SYSTEM")));
+
+    /** Forwards the current request's correlation ID (see {@link CorrelationIdFilter}) downstream. */
+    private static final org.springframework.http.client.ClientHttpRequestInterceptor CORRELATION_ID_INTERCEPTOR =
+            (request, body, execution) -> {
+                String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+                if (correlationId != null) {
+                    request.getHeaders().set(CorrelationIdFilter.HEADER, correlationId);
+                }
+                return execution.execute(request, body);
+            };
 
     @Value("${microservice.oauth2-registration-id:smartlaundry-m2m}")
     private String registrationId;
@@ -97,6 +108,7 @@ public class MicroserviceClientConfig {
         log.info("MachineStateService RestTemplate configured with OAuth2 client credentials ({})", registrationId);
 
         RestTemplate restTemplate = new RestTemplate(httpRequestFactory());
+        restTemplate.getInterceptors().add(CORRELATION_ID_INTERCEPTOR);
         restTemplate.getInterceptors().add((request, body, execution) -> {
             OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest
                     .withClientRegistrationId(registrationId)

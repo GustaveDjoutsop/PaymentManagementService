@@ -45,6 +45,7 @@ services:
   #     ORANGE_MERCHANT_KEY: ${ORANGE_MERCHANT_KEY:-}
   #     EQLINK_AUTO_START: ${EQLINK_AUTO_START:-false}
   #     CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+  #     MACHINE_STATE_SERVICE_URL: ${MACHINE_STATE_SERVICE_URL:-http://localhost:8082}
   #   restart: on-failure
 
 volumes:
