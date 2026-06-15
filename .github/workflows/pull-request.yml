@@ -139,10 +139,19 @@ jobs:
             wiremock/wiremock:3.10.0 \
             --verbose
           echo "Waiting for WireMock to be ready..."
+          ready=false
           for i in $(seq 1 20); do
-            curl -sf http://localhost:9090/__admin/health && break
+            if curl -sf http://localhost:9090/__admin/health; then
+              ready=true
+              break
+            fi
             sleep 2
           done
+          if [ "$ready" != "true" ]; then
+            echo "WireMock did not become ready in time" >&2
+            docker logs wiremock
+            exit 1
+          fi
           echo "WireMock ready"
 
       - name: Start PaymentManagementService
