@@ -1,5 +1,4 @@
 {
-  "id": "mtn-token",
   "name": "MTN MoMo - Get access token",
   "request": {
     "method": "POST",

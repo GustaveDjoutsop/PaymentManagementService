@@ -1,5 +1,4 @@
 {
-  "id": "orange-token",
   "name": "Orange Money - Get access token",
   "request": {
     "method": "POST",

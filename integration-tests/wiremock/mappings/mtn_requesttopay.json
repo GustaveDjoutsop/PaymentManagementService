@@ -1,5 +1,4 @@
 {
-  "id": "mtn-requesttopay",
   "name": "MTN MoMo - Request to pay",
   "request": {
     "method": "POST",
