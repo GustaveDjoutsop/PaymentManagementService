@@ -2,18 +2,24 @@ package com.smartlaundromat.payment.service.machine;
 
 import com.smartlaundromat.payment.eqlink.EqLinkProperties;
 import com.smartlaundromat.payment.model.Transaction;
+import io.github.resilience4j.bulkhead.Bulkhead;
+import io.github.resilience4j.bulkhead.BulkheadRegistry;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Triggers MachineStateService to start a machine cycle after a successful payment.
@@ -36,14 +42,20 @@ public class MachineStartService {
 
     private final EqLinkProperties eqLinkProperties;
     private final RestTemplate restTemplate;
+    private final CircuitBreaker circuitBreaker;
+    private final Bulkhead bulkhead;
 
     @Value("${machine-state-service.base-url:http://localhost:8082}")
     private String machineStateServiceUrl;
 
     public MachineStartService(EqLinkProperties eqLinkProperties,
-                                @Qualifier("machineStateRestTemplate") RestTemplate restTemplate) {
+                                @Qualifier("machineStateRestTemplate") RestTemplate restTemplate,
+                                CircuitBreakerRegistry circuitBreakerRegistry,
+                                BulkheadRegistry bulkheadRegistry) {
         this.eqLinkProperties = eqLinkProperties;
         this.restTemplate = restTemplate;
+        this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("machineStateService");
+        this.bulkhead = bulkheadRegistry.bulkhead("machineStateService");
     }
 
     /**
@@ -88,7 +100,10 @@ public class MachineStartService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-            restTemplate.postForEntity(url, entity, Map.class);
+            Supplier<ResponseEntity<Map>> call = () -> restTemplate.postForEntity(url, entity, Map.class);
+            call = Bulkhead.decorateSupplier(bulkhead, call);
+            call = CircuitBreaker.decorateSupplier(circuitBreaker, call);
+            call.get();
 
             log.info("Machine start triggered: machine={}, tx={}",
                     transaction.getMachineId(), transaction.getExternalReference());

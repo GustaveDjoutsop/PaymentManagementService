@@ -1,13 +1,19 @@
 package com.smartlaundromat.payment.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartlaundromat.payment.config.PaymentConfig;
 import com.smartlaundromat.payment.dto.WebhookPayload;
 import com.smartlaundromat.payment.model.enums.PaymentProvider;
+import com.smartlaundromat.payment.security.WebhookSignatureVerifier;
 import com.smartlaundromat.payment.service.PaymentService;
 import com.smartlaundromat.payment.service.TopUpService;
+import com.smartlaundromat.payment.service.provider.MtnMomoService;
+import com.smartlaundromat.payment.service.provider.OrangeMoneyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -30,15 +36,33 @@ public class WebhookController {
     private final PaymentService paymentService;
     private final TopUpService topUpService;
     private final PaymentConfig paymentConfig;
+    private final WebhookSignatureVerifier signatureVerifier;
+    private final MtnMomoService mtnMomoService;
+    private final OrangeMoneyService orangeMoneyService;
+    private final ObjectMapper objectMapper;
 
     // ── CamPay ────────────────────────────────────────────────────────────────
 
     @PostMapping("/campay")
     public ResponseEntity<Map<String, String>> handleCampayWebhook(
             @RequestHeader(value = "X-Campay-Signature", required = false) String signature,
-            @RequestBody WebhookPayload payload) {
+            @RequestBody String rawBody) throws Exception {
 
-        log.info("CamPay webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus()); //
+        String webhookSecret = paymentConfig.getCampay().getWebhookSecret();
+        if (!StringUtils.hasText(webhookSecret)) {
+            log.error("CamPay webhook rejected: CAMPAY_WEBHOOK_SECRET is not configured");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("status", "error", "message", "Webhook not configured"));
+        }
+
+        if (!signatureVerifier.verifyHmacSha256(webhookSecret, rawBody, signature)) {
+            log.warn("CamPay webhook rejected: invalid or missing signature");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("status", "error", "message", "Invalid signature"));
+        }
+
+        WebhookPayload payload = objectMapper.readValue(rawBody, WebhookPayload.class);
+        log.info("CamPay webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
         paymentService.processWebhook(
                 PaymentProvider.CAMPAY,
@@ -57,6 +81,14 @@ public class WebhookController {
 
     @PostMapping("/mtn")
     public ResponseEntity<Map<String, String>> handleMtnWebhook(@RequestBody WebhookPayload payload) {
+        if (!mtnMomoService.isConfigured()) {
+            log.warn("MTN webhook rejected: MTN MoMo provider is not configured");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("status", "error", "message", "Provider not configured"));
+        }
+
+        // TODO: verify MTN MoMo callback authenticity (provider-specific signature/IPN auth)
+        // before this provider goes live — tracked alongside the CamPay HMAC check.
         log.info("MTN webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
         paymentService.processWebhook(
@@ -76,7 +108,15 @@ public class WebhookController {
 
     @PostMapping("/orange")
     public ResponseEntity<Map<String, String>> handleOrangeWebhook(@RequestBody WebhookPayload payload) {
-        log.info("Orange Money webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
+        if (!orangeMoneyService.isConfigured()) {
+            log.warn("Orange Money webhook rejected: Orange Money provider is not configured");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("status", "error", "message", "Provider not configured"));
+        }
+
+        // TODO: verify Orange Money callback authenticity (provider-specific signature)
+        // before this provider goes live — tracked alongside the CamPay HMAC check.
+        log.info("Orange webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
         paymentService.processWebhook(
                 PaymentProvider.ORANGE_MONEY,

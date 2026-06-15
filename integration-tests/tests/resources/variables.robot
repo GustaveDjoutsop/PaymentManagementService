@@ -36,3 +36,8 @@ ${PROVIDER_ORANGE}      ORANGE_MONEY
 ${CUSTOMER_PHONE_MTN}   237670123456
 ${CUSTOMER_PHONE_ORANGE}    237690123456
 ${CUSTOMER_PHONE_CAMPAY}    237650123456
+
+# ── CamPay webhook signature ─────────────────────────────────────────────────
+# Must match --payment.campay.webhook-secret on the running service (see
+# integration-tests/README.md). CamPay webhooks are HMAC-SHA256 signed.
+${CAMPAY_WEBHOOK_SECRET}    test-webhook-secret

@@ -143,6 +143,7 @@ jobs:
             --payment.campay.base-url=http://localhost:9090 \
             --payment.campay.app-key=test-key \
             --payment.campay.app-secret=test-secret \
+            --payment.campay.webhook-secret=test-webhook-secret \
             --payment.mtn.api-url=http://localhost:9090 \
             --payment.mtn.subscription-key=test-sub-key \
             --payment.mtn.api-user-id=test-user \
