@@ -185,9 +185,9 @@ jobs:
         run: |
           robot \
             --outputdir integration-tests/results \
-            --log integration-tests/results/log.html \
-            --report integration-tests/results/report.html \
-            --xunit integration-tests/results/xunit.xml \
+            --log log.html \
+            --report report.html \
+            --xunit xunit.xml \
             --variable AUTH0_CLIENT_ID:"${AUTH0_CLIENT_ID}" \
             --variable AUTH0_CLIENT_SECRET:"${AUTH0_CLIENT_SECRET}" \
             --variable AUTH0_TOKEN_URL:"https://dev-iuo6si32jobgnmod.eu.auth0.com/oauth/token" \
