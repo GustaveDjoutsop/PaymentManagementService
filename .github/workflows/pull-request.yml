@@ -80,8 +80,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn clean verify sonar:sonar -B \
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+            -Dsonar.projectKey=GustaveDjoutsop_PaymentManagementService \
+            -Dsonar.organization=gustavedjoutsop \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
@@ -92,6 +92,21 @@ jobs:
     name: Integration Tests (Robot Framework + WireMock)
     runs-on: ubuntu-latest
     needs: sonar
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: paymentdb
+          POSTGRES_USER: payment_user
+          POSTGRES_PASSWORD: payment_pass
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -112,6 +127,9 @@ jobs:
       - name: Install Robot Framework and libraries
         run: pip install -r integration-tests/requirements.txt
 
+      - name: Build application JAR
+        run: mvn clean package -DskipTests -B
+
       - name: Start WireMock (mocks CamPay, MTN, Orange APIs)
         run: |
           docker run -d \
@@ -121,14 +139,20 @@ jobs:
             wiremock/wiremock:3.10.0 \
             --verbose
           echo "Waiting for WireMock to be ready..."
+          ready=false
           for i in $(seq 1 20); do
-            curl -sf http://localhost:9090/__admin/health && break
+            if curl -sf http://localhost:9090/__admin/health; then
+              ready=true
+              break
+            fi
             sleep 2
           done
+          if [ "$ready" != "true" ]; then
+            echo "WireMock did not become ready in time" >&2
+            docker logs wiremock
+            exit 1
+          fi
           echo "WireMock ready"
-
-      - name: Build application JAR
-        run: mvn clean package -DskipTests -B
 
       - name: Start PaymentManagementService
         env:
@@ -140,7 +164,7 @@ jobs:
             --server.port=8081 \
             --spring.security.oauth2.resourceserver.jwt.issuer-uri=${AUTH0_ISSUER_URI} \
             --auth0.audience=${AUTH0_AUDIENCE} \
-            --payment.campay.base-url=http://localhost:9090 \
+            --payment.campay.base-url=http://localhost:9090/api \
             --payment.campay.app-key=test-key \
             --payment.campay.app-secret=test-secret \
             --payment.campay.webhook-secret=test-webhook-secret \
@@ -170,9 +194,9 @@ jobs:
         run: |
           robot \
             --outputdir integration-tests/results \
-            --log integration-tests/results/log.html \
-            --report integration-tests/results/report.html \
-            --xunit integration-tests/results/xunit.xml \
+            --log log.html \
+            --report report.html \
+            --xunit xunit.xml \
             --variable AUTH0_CLIENT_ID:"${AUTH0_CLIENT_ID}" \
             --variable AUTH0_CLIENT_SECRET:"${AUTH0_CLIENT_SECRET}" \
             --variable AUTH0_TOKEN_URL:"https://dev-iuo6si32jobgnmod.eu.auth0.com/oauth/token" \

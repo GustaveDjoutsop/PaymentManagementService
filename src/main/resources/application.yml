@@ -8,17 +8,22 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/paymentdb}
     driver-class-name: org.postgresql.Driver
-    username: ${POSTGRES_USER:payment_user}
-    password: ${POSTGRES_PASSWORD:payment_pass}
+    username: ${SPRING_DATASOURCE_USERNAME:payment_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:payment_pass}
 
+  flyway:
+    enabled: true
+    schemas: payment
+    default-schema: payment
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         format_sql: true
+        default_schema: payment
 
   # ── Security: Auth0 Resource Server + M2M client ───────────────────────────
   security:

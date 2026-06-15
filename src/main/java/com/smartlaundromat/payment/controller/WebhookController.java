@@ -3,6 +3,7 @@ package com.smartlaundromat.payment.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartlaundromat.payment.config.PaymentConfig;
 import com.smartlaundromat.payment.dto.WebhookPayload;
+import com.smartlaundromat.payment.exception.PaymentException;
 import com.smartlaundromat.payment.model.enums.PaymentProvider;
 import com.smartlaundromat.payment.security.WebhookSignatureVerifier;
 import com.smartlaundromat.payment.service.PaymentService;
@@ -64,15 +65,15 @@ public class WebhookController {
         WebhookPayload payload = objectMapper.readValue(rawBody, WebhookPayload.class);
         log.info("CamPay webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
-        paymentService.processWebhook(
+        processPaymentWebhookIfApplicable(() -> paymentService.processWebhook(
                 PaymentProvider.CAMPAY,
                 payload.getExternalReference(),
                 payload.getStatus(),
                 payload.getReference(),
                 payload.getReason()
-        );
+        ));
 
-        topUpService.processTopUpWebhook(payload.getExternalReference(), payload.getStatus(), payload.getReason());
+        processTopUpWebhookIfApplicable(payload);
 
         return ResponseEntity.ok(Map.of("status", "received"));
     }
@@ -91,15 +92,15 @@ public class WebhookController {
         // before this provider goes live — tracked alongside the CamPay HMAC check.
         log.info("MTN webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
-        paymentService.processWebhook(
+        processPaymentWebhookIfApplicable(() -> paymentService.processWebhook(
                 PaymentProvider.MTN,
                 payload.getExternalReference(),
                 payload.getStatus(),
                 payload.getFinancialTransactionId(),
                 payload.getReason()
-        );
+        ));
 
-        topUpService.processTopUpWebhook(payload.getExternalReference(), payload.getStatus(), payload.getReason());
+        processTopUpWebhookIfApplicable(payload);
 
         return ResponseEntity.ok(Map.of("status", "received"));
     }
@@ -118,16 +119,48 @@ public class WebhookController {
         // before this provider goes live — tracked alongside the CamPay HMAC check.
         log.info("Orange webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
-        paymentService.processWebhook(
+        processPaymentWebhookIfApplicable(() -> paymentService.processWebhook(
                 PaymentProvider.ORANGE_MONEY,
                 payload.getExternalReference(),
                 payload.getStatus(),
                 payload.getReference(),
                 payload.getReason()
-        );
+        ));
 
-        topUpService.processTopUpWebhook(payload.getExternalReference(), payload.getStatus(), payload.getReason());
+        processTopUpWebhookIfApplicable(payload);
 
         return ResponseEntity.ok(Map.of("status", "received"));
+    }
+
+    // ── Shared ────────────────────────────────────────────────────────────────
+
+    /**
+     * Some provider webhooks confirm an RFID top-up, not a machine payment — in that
+     * case there is no matching {@code Transaction} and {@link PaymentService}
+     * throws {@code TRANSACTION_NOT_FOUND}, which is expected and not an error here.
+     */
+    private void processPaymentWebhookIfApplicable(Runnable action) {
+        try {
+            action.run();
+        } catch (PaymentException ex) {
+            if (!"TRANSACTION_NOT_FOUND".equals(ex.getErrorCode())) {
+                throw ex;
+            }
+        }
+    }
+
+    /**
+     * Most provider webhooks confirm a machine payment, not an RFID top-up — in that
+     * case there is no matching {@code TopUpTransaction} and {@link TopUpService}
+     * throws {@code TOPUP_NOT_FOUND}, which is expected and not an error here.
+     */
+    private void processTopUpWebhookIfApplicable(WebhookPayload payload) {
+        try {
+            topUpService.processTopUpWebhook(payload.getExternalReference(), payload.getStatus(), payload.getReason());
+        } catch (PaymentException ex) {
+            if (!"TOPUP_NOT_FOUND".equals(ex.getErrorCode())) {
+                throw ex;
+            }
+        }
     }
 }
