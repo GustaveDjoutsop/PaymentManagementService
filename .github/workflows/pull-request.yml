@@ -164,7 +164,7 @@ jobs:
             --server.port=8081 \
             --spring.security.oauth2.resourceserver.jwt.issuer-uri=${AUTH0_ISSUER_URI} \
             --auth0.audience=${AUTH0_AUDIENCE} \
-            --payment.campay.base-url=http://localhost:9090 \
+            --payment.campay.base-url=http://localhost:9090/api \
             --payment.campay.app-key=test-key \
             --payment.campay.app-secret=test-secret \
             --payment.campay.webhook-secret=test-webhook-secret \
