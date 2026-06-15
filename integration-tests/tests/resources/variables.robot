@@ -28,6 +28,10 @@ ${LARGE_AMOUNT}         999999
 ${MACHINE_ID}           washer_01
 ${PULSE_COUNT}          1
 ${CYCLE_DURATION}       30
+# Used by 01_rfid_card_tests TC08 — must not collide with machines used by
+# 02_payment_tests / 03_webhook_tests, since a SUCCESSFUL transaction marks
+# a machine as busy for new payment initiations.
+${DEBIT_TEST_MACHINE}   dryer_03
 
 # ── Provider data ─────────────────────────────────────────────────────────────
 ${PROVIDER_CAMPAY}      CAMPAY
