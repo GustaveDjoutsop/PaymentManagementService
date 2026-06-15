@@ -1,0 +1,16 @@
+{
+  "id": "mtn-status-pending",
+  "name": "MTN MoMo - Get payment status (PENDING)",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/collection/v1_0/requesttopay/.*"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "status": "PENDING",
+      "financialTransactionId": null
+    }
+  }
+}
