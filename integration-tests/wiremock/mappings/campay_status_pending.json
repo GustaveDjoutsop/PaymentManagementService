@@ -1,5 +1,4 @@
 {
-  "id": "campay-status-pending",
   "name": "CamPay - Check payment status (PENDING)",
   "request": {
     "method": "GET",

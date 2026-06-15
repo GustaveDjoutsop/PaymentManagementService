@@ -1,5 +1,4 @@
 {
-  "id": "campay-status-successful",
   "name": "CamPay - Check payment status (SUCCESSFUL)",
   "request": {
     "method": "GET",

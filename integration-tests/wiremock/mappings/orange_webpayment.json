@@ -1,5 +1,4 @@
 {
-  "id": "orange-webpayment",
   "name": "Orange Money - Initiate web payment",
   "request": {
     "method": "POST",

@@ -1,5 +1,4 @@
 {
-  "id": "campay-collect-success",
   "name": "CamPay - Initiate payment (success)",
   "request": {
     "method": "POST",

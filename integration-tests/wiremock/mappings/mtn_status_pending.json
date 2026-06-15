@@ -1,5 +1,4 @@
 {
-  "id": "mtn-status-pending",
   "name": "MTN MoMo - Get payment status (PENDING)",
   "request": {
     "method": "GET",
