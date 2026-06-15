@@ -56,18 +56,20 @@ TC07 - Check balance without requiredAmount always returns balance
 
 TC08 - Debit card successfully debits the correct amount
     [Tags]    rfid    debit    smoke
-    ${result}=    Debit Card    ${CARD_UID_1}    ${DEBIT_AMOUNT}
+    ${result}=    Debit Card    ${CARD_UID_1}    ${DEBIT_AMOUNT}    machine_id=${DEBIT_TEST_MACHINE}
     Should Be True                ${result}[success]
     Should Be Equal As Numbers    ${result}[amountDebited]      ${DEBIT_AMOUNT}
     ${expected_remaining}=    Evaluate    ${INITIAL_BALANCE} - ${DEBIT_AMOUNT}
     Should Be Equal As Numbers    ${result}[remainingBalance]   ${expected_remaining}
     Should Be Equal As Strings    ${result}[cardUid]            ${CARD_UID_1}
-    Should Be Equal As Strings    ${result}[machineId]          ${MACHINE_ID}
+    Should Be Equal As Strings    ${result}[machineId]          ${DEBIT_TEST_MACHINE}
 
 TC09 - Debit fails when balance is insufficient
     [Tags]    rfid    debit    negative
+    &{payload}=    Create Dictionary
+    ...    cardUid=${CARD_UID_2}    amount=${LARGE_AMOUNT}    machineId=${MACHINE_ID}    pulseCount=${1}    cycleDuration=${30}
     ${resp}=    POST On Session    payment    /api/rfid/debit
-    ...    json={"cardUid": "${CARD_UID_2}", "amount": ${LARGE_AMOUNT}, "machineId": "${MACHINE_ID}", "pulseCount": 1, "cycleDuration": 30}
+    ...    json=${payload}
     ...    expected_status=400
     ${body}=    Set Variable    ${resp.json()}
     Should Be Equal As Strings    ${body}[error]    INSUFFICIENT_BALANCE
@@ -93,8 +95,10 @@ TC12 - Get single card by UID
 TC13 - Deactivate a card prevents debiting
     [Tags]    rfid    lifecycle
     PATCH On Session    payment    /api/rfid/cards/${CARD_UID_2}/deactivate    expected_status=200
+    &{payload}=    Create Dictionary
+    ...    cardUid=${CARD_UID_2}    amount=${100}    machineId=${MACHINE_ID}    pulseCount=${1}    cycleDuration=${30}
     ${resp}=    POST On Session    payment    /api/rfid/debit
-    ...    json={"cardUid": "${CARD_UID_2}", "amount": 100, "machineId": "${MACHINE_ID}", "pulseCount": 1, "cycleDuration": 30}
+    ...    json=${payload}
     ...    expected_status=400
 
 TC14 - Re-activate a deactivated card
