@@ -65,13 +65,13 @@ public class WebhookController {
         WebhookPayload payload = objectMapper.readValue(rawBody, WebhookPayload.class);
         log.info("CamPay webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
-        paymentService.processWebhook(
+        processPaymentWebhookIfApplicable(() -> paymentService.processWebhook(
                 PaymentProvider.CAMPAY,
                 payload.getExternalReference(),
                 payload.getStatus(),
                 payload.getReference(),
                 payload.getReason()
-        );
+        ));
 
         processTopUpWebhookIfApplicable(payload);
 
@@ -92,13 +92,13 @@ public class WebhookController {
         // before this provider goes live — tracked alongside the CamPay HMAC check.
         log.info("MTN webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
-        paymentService.processWebhook(
+        processPaymentWebhookIfApplicable(() -> paymentService.processWebhook(
                 PaymentProvider.MTN,
                 payload.getExternalReference(),
                 payload.getStatus(),
                 payload.getFinancialTransactionId(),
                 payload.getReason()
-        );
+        ));
 
         processTopUpWebhookIfApplicable(payload);
 
@@ -119,13 +119,13 @@ public class WebhookController {
         // before this provider goes live — tracked alongside the CamPay HMAC check.
         log.info("Orange webhook received: ref={}, status={}", payload.getExternalReference(), payload.getStatus());
 
-        paymentService.processWebhook(
+        processPaymentWebhookIfApplicable(() -> paymentService.processWebhook(
                 PaymentProvider.ORANGE_MONEY,
                 payload.getExternalReference(),
                 payload.getStatus(),
                 payload.getReference(),
                 payload.getReason()
-        );
+        ));
 
         processTopUpWebhookIfApplicable(payload);
 
@@ -133,6 +133,21 @@ public class WebhookController {
     }
 
     // ── Shared ────────────────────────────────────────────────────────────────
+
+    /**
+     * Some provider webhooks confirm an RFID top-up, not a machine payment — in that
+     * case there is no matching {@code Transaction} and {@link PaymentService}
+     * throws {@code TRANSACTION_NOT_FOUND}, which is expected and not an error here.
+     */
+    private void processPaymentWebhookIfApplicable(Runnable action) {
+        try {
+            action.run();
+        } catch (PaymentException ex) {
+            if (!"TRANSACTION_NOT_FOUND".equals(ex.getErrorCode())) {
+                throw ex;
+            }
+        }
+    }
 
     /**
      * Most provider webhooks confirm a machine payment, not an RFID top-up — in that
