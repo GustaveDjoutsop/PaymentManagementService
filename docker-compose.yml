@@ -1,52 +1,20 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: payment-db
-    environment:
-      POSTGRES_DB: paymentdb
-      POSTGRES_USER: payment_user
-      POSTGRES_PASSWORD: payment_pass
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U payment_user -d paymentdb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # payment-db decommissioned 2026-06-16 (P3 cutover).
+  # PaymentManagementService now connects to Supabase smartlaundry-dev
+  # (schema: payment, role: payment_svc) via Doppler-injected env vars.
+  # To run locally: doppler run -- mvn spring-boot:run
+  # (Doppler project: payment-management-service, env: dev)
 
   # app:
   #   build:
   #     context: .
   #     dockerfile: Dockerfile
   #   container_name: payment-management-service
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
   #   ports:
   #     - "8081:8081"
   #   environment:
-  #     DB_HOST: db
-  #     DB_PORT: 5432
-  #     DB_NAME: paymentdb
-  #     DB_USER: payment_user
-  #     DB_PASSWORD: payment_pass
   #     AUTH0_ISSUER_URI: ${AUTH0_ISSUER_URI:-https://dev-iuo6si32jobgnmod.eu.auth0.com/}
   #     AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://smartlaundry.api}
-  #     CAMPAY_APP_KEY: ${CAMPAY_APP_KEY:-}
-  #     CAMPAY_APP_SECRET: ${CAMPAY_APP_SECRET:-}
-  #     CAMPAY_WEBHOOK_SECRET: ${CAMPAY_WEBHOOK_SECRET:-}
-  #     MTN_SUBSCRIPTION_KEY: ${MTN_SUBSCRIPTION_KEY:-}
-  #     MTN_API_USER_ID: ${MTN_API_USER_ID:-}
-  #     MTN_API_KEY: ${MTN_API_KEY:-}
-  #     ORANGE_CLIENT_ID: ${ORANGE_CLIENT_ID:-}
-  #     ORANGE_CLIENT_SECRET: ${ORANGE_CLIENT_SECRET:-}
-  #     ORANGE_MERCHANT_KEY: ${ORANGE_MERCHANT_KEY:-}
-  #     EQLINK_AUTO_START: ${EQLINK_AUTO_START:-false}
-  #     CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
   #     MACHINE_STATE_SERVICE_URL: ${MACHINE_STATE_SERVICE_URL:-http://localhost:8082}
-  #   restart: on-failure
-
-volumes:
-  postgres_data:
+  #     CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+  #     # All secrets injected via Doppler: doppler run -- docker compose up app
