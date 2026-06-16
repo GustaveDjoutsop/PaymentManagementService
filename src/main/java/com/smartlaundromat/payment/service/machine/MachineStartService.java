@@ -1,7 +1,8 @@
 package com.smartlaundromat.payment.service.machine;
 
-import com.smartlaundromat.payment.eqlink.EqLinkProperties;
-import com.smartlaundromat.payment.model.Transaction;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartlaundromat.payment.model.OutboxEvent;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -14,103 +15,82 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * Triggers MachineStateService to start a machine cycle after a successful payment.
+ * HTTP implementation of {@link MachineEventPublisher}.
  *
- * <p>This service is called by {@link com.smartlaundromat.payment.service.PaymentService}
- * when a transaction transitions to {@code SUCCESSFUL} status, only when
- * {@code eqlink.auto-start-machine-after-payment=true}.
+ * <p>Reads the {@code PaymentSucceeded} event payload from the outbox and
+ * POSTs it to MachineStateService's {@code /api/machines/start-cycle} endpoint
+ * with an Auth0 M2M Bearer token (scope {@code sls-machine-start}).
+ * MachineStateService applies an idempotency check on {@code transactionReference}
+ * before starting the machine, so duplicate deliveries are safe.
  *
- * <p>MachineStateService then decides internally whether to use EQLink or MQTT
- * to physically start the machine — PaymentManagementService does not need to know.
- *
- * <p>The call is authenticated with an Auth0 M2M Bearer token via the
- * {@code machineStateRestTemplate} bean (see {@code MicroserviceClientConfig}),
- * since MachineStateService requires {@code SCOPE_sls-machine-start} on
- * {@code POST /api/machines/start-cycle}.
+ * <p>Called exclusively by {@link com.smartlaundromat.payment.service.OutboxRelayService}
+ * — no longer called directly from PaymentService (P4, async outbox pattern).
  */
 @Service
 @Slf4j
-public class MachineStartService {
+public class MachineStartService implements MachineEventPublisher {
 
-    private final EqLinkProperties eqLinkProperties;
     private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
     private final CircuitBreaker circuitBreaker;
     private final Bulkhead bulkhead;
 
     @Value("${machine-state-service.base-url:http://localhost:8082}")
     private String machineStateServiceUrl;
 
-    public MachineStartService(EqLinkProperties eqLinkProperties,
-                                @Qualifier("machineStateRestTemplate") RestTemplate restTemplate,
-                                CircuitBreakerRegistry circuitBreakerRegistry,
-                                BulkheadRegistry bulkheadRegistry) {
-        this.eqLinkProperties = eqLinkProperties;
-        this.restTemplate = restTemplate;
-        this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("machineStateService");
-        this.bulkhead = bulkheadRegistry.bulkhead("machineStateService");
+    public MachineStartService(@Qualifier("machineStateRestTemplate") RestTemplate restTemplate,
+                               ObjectMapper objectMapper,
+                               CircuitBreakerRegistry circuitBreakerRegistry,
+                               BulkheadRegistry bulkheadRegistry) {
+        this.restTemplate    = restTemplate;
+        this.objectMapper    = objectMapper;
+        this.circuitBreaker  = circuitBreakerRegistry.circuitBreaker("machineStateService");
+        this.bulkhead        = bulkheadRegistry.bulkhead("machineStateService");
     }
 
     /**
-     * Asynchronously notifies MachineStateService to start the machine cycle
-     * associated with the given transaction.
+     * Publishes a {@code PaymentSucceeded} outbox event by POSTing to
+     * {@code /api/machines/start-cycle}.
      *
-     * <p>The call is fire-and-forget with exception swallowing — a failure here
-     * does not roll back the payment record. The operator must handle it manually
-     * or rely on the bot/ESP32 fallback.
-     *
-     * @param transaction the successfully paid transaction
+     * <p>Throws on failure so {@link com.smartlaundromat.payment.service.OutboxRelayService}
+     * can retry with backoff.
      */
-    public void notifyMachineStart(Transaction transaction) {
-        if (eqLinkProperties == null || !eqLinkProperties.isAutoStartMachineAfterPayment()) {
-            log.debug("Auto machine start disabled — skipping for tx {}", transaction.getExternalReference());
+    @Override
+    public void publish(OutboxEvent event) throws Exception {
+        Map<String, Object> payload = objectMapper.readValue(
+                event.getPayload(), new TypeReference<>() {});
+
+        String machineId = (String) payload.get("machineId");
+        if (machineId == null || machineId.isBlank()) {
+            log.warn("Skipping outbox event {} — missing machineId in payload", event.getId());
             return;
         }
 
-        if (!StringUtils.hasText(transaction.getMachineId())) {
-            log.warn("Cannot auto-start machine — no machineId in transaction {}",
-                    transaction.getExternalReference());
-            return;
-        }
+        Map<String, Object> body = Map.of(
+                "machineId",            machineId,
+                "cycleType",            payload.getOrDefault("cycleType",       "NORMAL"),
+                "durationMinutes",      payload.getOrDefault("durationMinutes", 30),
+                "pulseCount",           payload.getOrDefault("pulseCount",      1),
+                "transactionReference", payload.getOrDefault("transactionReference", "")
+        );
 
-        try {
-            String url = machineStateServiceUrl + "/api/machines/start-cycle";
+        String url = machineStateServiceUrl + "/api/machines/start-cycle";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-            Map<String, Object> body = new HashMap<>();
-            body.put("machineId",            transaction.getMachineId());
-            body.put("cycleType",            "NORMAL");
-            body.put("durationMinutes",      transaction.getCycleDuration() != null
-                                                ? transaction.getCycleDuration() : 30);
-            body.put("pulseCount",           transaction.getPulseCount() != null
-                                                ? transaction.getPulseCount() : 1);
-            body.put("transactionReference", transaction.getExternalReference());
+        Supplier<ResponseEntity<Map>> call = () -> restTemplate.postForEntity(url, entity, Map.class);
+        call = Bulkhead.decorateSupplier(bulkhead, call);
+        call = CircuitBreaker.decorateSupplier(circuitBreaker, call);
+        call.get();
 
-            if (transaction.getRfidCardUid() != null) {
-                body.put("rfidCardUid", transaction.getRfidCardUid());
-            }
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
-            Supplier<ResponseEntity<Map>> call = () -> restTemplate.postForEntity(url, entity, Map.class);
-            call = Bulkhead.decorateSupplier(bulkhead, call);
-            call = CircuitBreaker.decorateSupplier(circuitBreaker, call);
-            call.get();
-
-            log.info("Machine start triggered: machine={}, tx={}",
-                    transaction.getMachineId(), transaction.getExternalReference());
-
-        } catch (Exception e) {
-            log.error("Failed to trigger machine start for tx {}: {}",
-                    transaction.getExternalReference(), e.getMessage());
-        }
+        log.info("Machine start dispatched: machine={}, tx={}",
+                machineId, payload.get("transactionReference"));
     }
 }

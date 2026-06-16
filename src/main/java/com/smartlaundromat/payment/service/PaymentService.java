@@ -1,13 +1,16 @@
 package com.smartlaundromat.payment.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartlaundromat.payment.dto.PaymentInitiationRequest;
 import com.smartlaundromat.payment.dto.PaymentResponse;
 import com.smartlaundromat.payment.exception.PaymentException;
+import com.smartlaundromat.payment.model.OutboxEvent;
 import com.smartlaundromat.payment.model.Transaction;
 import com.smartlaundromat.payment.model.enums.PaymentProvider;
 import com.smartlaundromat.payment.model.enums.PaymentStatus;
+import com.smartlaundromat.payment.repository.OutboxEventRepository;
 import com.smartlaundromat.payment.repository.TransactionRepository;
-import com.smartlaundromat.payment.service.machine.MachineStartService;
 import com.smartlaundromat.payment.service.provider.CampayService;
 import com.smartlaundromat.payment.service.provider.MtnMomoService;
 import com.smartlaundromat.payment.service.provider.OrangeMoneyService;
@@ -27,17 +30,12 @@ import java.util.UUID;
 public class PaymentService {
 
     private final TransactionRepository transactionRepository;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
-    // ── Payment providers (mobile money only — EQLink is not a payment system) ─
     private final CampayService campayService;
     private final MtnMomoService mtnMomoService;
     private final OrangeMoneyService orangeMoneyService;
-
-    /**
-     * Triggers MachineStateService to start the machine after a SUCCESSFUL payment.
-     * Active only when {@code eqlink.auto-start-machine-after-payment=true}.
-     */
-    private final MachineStartService machineStartService;
 
     // ── Payment initiation ────────────────────────────────────────────────────
 
@@ -100,10 +98,11 @@ public class PaymentService {
     /**
      * Processes a payment provider callback (CamPay, MTN, or Orange Money).
      *
-     * <p>After marking a transaction {@code SUCCESSFUL}, automatically notifies
-     * MachineStateService to start the machine if
-     * {@code eqlink.auto-start-machine-after-payment=true}.
-     * MachineStateService then decides whether to use EQLink IoT or MQTT.
+     * <p>On {@code SUCCESSFUL}: marks the transaction and writes a
+     * {@code PaymentSucceeded} event to the {@code outbox} table in the same
+     * Postgres transaction (ACID). The {@link OutboxRelayService} picks it up
+     * asynchronously and dispatches to MachineStateService — decoupling the
+     * payment commit from the machine-start HTTP call (P4, W5/W10).
      */
     @Transactional
     public Transaction processWebhook(PaymentProvider provider,
@@ -129,8 +128,7 @@ public class PaymentService {
             log.info("Payment SUCCESSFUL — tx={}, machine={}, provider={}",
                     externalReference, transaction.getMachineId(), provider);
 
-            // Auto-trigger machine start via MachineStateService (which uses EQLink or MQTT)
-            machineStartService.notifyMachineStart(transaction);
+            outboxEventRepository.save(buildPaymentSucceededEvent(transaction));
 
         } else {
             transaction.setStatus(PaymentStatus.FAILED);
@@ -166,6 +164,26 @@ public class PaymentService {
     }
 
     // ── Private ───────────────────────────────────────────────────────────────
+
+    private OutboxEvent buildPaymentSucceededEvent(Transaction tx) {
+        Map<String, Object> payloadMap = Map.of(
+                "machineId",            tx.getMachineId(),
+                "transactionReference", tx.getExternalReference(),
+                "cycleType",            "NORMAL",
+                "durationMinutes",      tx.getCycleDuration() != null ? tx.getCycleDuration() : 30,
+                "pulseCount",           tx.getPulseCount()    != null ? tx.getPulseCount()    : 1
+        );
+        try {
+            return OutboxEvent.builder()
+                    .aggregateType("Transaction")
+                    .aggregateId(tx.getExternalReference())
+                    .eventType("PaymentSucceeded")
+                    .payload(objectMapper.writeValueAsString(payloadMap))
+                    .build();
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialize outbox payload for tx " + tx.getExternalReference(), e);
+        }
+    }
 
     private PaymentProviderService resolveProvider(PaymentProvider provider) {
         return switch (provider) {
